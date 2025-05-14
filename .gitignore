@@ -116,3 +116,8 @@ cython_debug/
 
 # Azure Functions local settings
 local.settings.json
+
+# Azurite local emulator files and storage
+__azurite_db_*.json
+__blobstorage__/
+__queuestorage__/

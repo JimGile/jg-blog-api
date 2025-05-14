@@ -3,7 +3,3 @@ uvicorn
 azure-functions
 azure-cosmos
 python-multipart
-pytest
-pytest-asyncio
-pytest-cov
-httpx

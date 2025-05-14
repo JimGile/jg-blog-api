@@ -1,0 +1,16 @@
+# POST http://localhost:7071/blog/
+# content-type: application/json
+# Authorization: Bearer xxx
+
+# {
+#     "title": "Test Blog",
+#     "content": "This is a test blog content.",
+#     "author": "Test Author",
+#     "category": "Test Category"
+# }
+
+# GET http://localhost:7071/blog/6a4a6cdf-7c76-4ea9-a039-6ed0517d39d7
+# GET http://localhost:7071/blog/6a4a6cdf-7c76-4ea9-a039-6ed0517d39d7
+
+
+GET http://localhost:7071/blog/

@@ -14,8 +14,8 @@ def test_create_blog_post():
     global created_blog_id
     response = client.post(
         "/blog/",
-        headers={"Authorization": "Bearer " + COSMOS_MODIFY_TOKEN},
-        data={
+        headers={"Authorization": "Bearer " + COSMOS_MODIFY_TOKEN, "Content-Type": "application/json"},
+        json={
             "title": "Test Blog",
             "content": "This is a test blog content.",
             "author": "Test Author",
@@ -28,13 +28,19 @@ def test_create_blog_post():
     assert response.json()["message"] == "Blog post created successfully"
 
 def test_get_all_blog_posts():
-    response = client.get("/blog/")
+    response = client.get(
+        "/blog/",
+        headers={"Content-Type": "application/json"}
+    )
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
 def test_get_blog_post():
     global created_blog_id
-    response = client.get(f"/blog/{created_blog_id}")
+    response = client.get(
+        f"/blog/{created_blog_id}",
+        headers={"Content-Type": "application/json"}
+    )
     if response.status_code == 200:
         assert "id" in response.json()
         assert response.json()["id"] == created_blog_id
@@ -42,13 +48,19 @@ def test_get_blog_post():
         assert response.status_code == 404
 
 def test_get_all_categories():
-    response = client.get("/blog/categories/")
+    response = client.get(
+        "/blog/categories/",
+        headers={"Content-Type": "application/json"}
+    )
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
 def test_get_blog_posts_by_category():
     category = "Test Category"
-    response = client.get(f"/blog/category/{category}")
+    response = client.get(
+        f"/blog/category/{category}",
+        headers={"Content-Type": "application/json"}
+    )
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
@@ -58,8 +70,8 @@ def test_update_blog_post():
     # Update the blog post
     response = client.put(
         f"/blog/{created_blog_id}",
-        headers={"Authorization": "Bearer " + COSMOS_MODIFY_TOKEN},
-        data={
+        headers={"Authorization": "Bearer " + COSMOS_MODIFY_TOKEN, "Content-Type": "application/json"},
+        json={
             "title": "Updated Test Blog",
             "content": "This is updated test blog content.",
             "author": "Updated Test Author",
@@ -70,7 +82,10 @@ def test_update_blog_post():
     assert response.json()["message"] == "Blog post updated successfully"
 
     # Verify the update
-    response = client.get(f"/blog/{created_blog_id}")
+    response = client.get(
+        f"/blog/{created_blog_id}",
+        headers={"Content-Type": "application/json"}
+    )
     assert response.status_code == 200
     blog_post = response.json()
     assert blog_post["title"] == "Updated Test Blog"
@@ -82,7 +97,7 @@ def test_delete_blog_post():
     global created_blog_id
     response = client.delete(
         f"/blog/{created_blog_id}",
-        headers={"Authorization": "Bearer " + COSMOS_MODIFY_TOKEN},
+        headers={"Authorization": "Bearer " + COSMOS_MODIFY_TOKEN, "Content-Type": "application/json"}
     )
     if response.status_code == 200:
         assert response.json()["message"] == "Blog post deleted successfully"

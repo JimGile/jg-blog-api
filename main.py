@@ -1,9 +1,14 @@
-from fastapi import FastAPI, UploadFile, Form, Depends, HTTPException
+from fastapi import FastAPI, UploadFile, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from azure.cosmos import CosmosClient
 from uuid import uuid4
 import os
+import logging
 from datetime import datetime, timezone
+from pydantic import BaseModel
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 
@@ -30,37 +35,29 @@ security = HTTPBearer()
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
     if token != COSMOS_MODIFY_TOKEN:
+        logging.info(f"Invalid token provided: {token}")
         raise HTTPException(status_code=401, detail="Invalid request.")
+
+class BlogPost(BaseModel):
+    title: str
+    content: str
+    author: str
+    category: str
+    id: str | None = None
+    date: str | None = None
 
 @app.post("/blog/")
 async def create_blog_post(
-    title: str = Form(...),
-    content: str = Form(...),
-    author: str = Form(...),
-    category: str = Form(...),
-    image: UploadFile = None,
+    blog_post: BlogPost,
     credentials: HTTPAuthorizationCredentials = Depends(verify_token)
 ):
-    blog_id = str(uuid4())
-    blog_post = {
-        "id": blog_id,
-        "category": category,
-        "title": title,
-        "content": content,
-        "author": author,
-        "date": datetime.now(timezone.utc).isoformat(),
-        "image_url": None
-    }
-
-    if image:
-        image_path = f"images/{blog_id}_{image.filename}"
-        with open(image_path, "wb") as f:
-            f.write(await image.read())
-        blog_post["image_url"] = image_path
-
-    container.create_item(body=blog_post)
-    print(f"Created blog post with ID: {blog_id}")
-    return {"message": "Blog post created successfully", "id": blog_id}
+    blog_post = blog_post.model_copy(update={
+        "id": str(uuid4()),
+        "date": datetime.now(timezone.utc).isoformat()
+    })
+    container.create_item(body=blog_post.model_dump())
+    logging.info(f"Created blog post with ID: {blog_post.id}")
+    return {"message": "Blog post created successfully", "id": blog_post.id}
 
 @app.get("/blog/{blog_id}")
 async def get_blog_post(blog_id: str):
@@ -91,45 +88,25 @@ async def get_blog_posts_by_category(category: str):
 @app.put("/blog/{blog_id}")
 async def update_blog_post(
     blog_id: str,
-    title: str = Form(None),
-    content: str = Form(None),
-    author: str = Form(None),
-    category: str = Form(None),
-    image: UploadFile = None,
+    blog_post: BlogPost,
     credentials: HTTPAuthorizationCredentials = Depends(verify_token)
 ):
     query = f"SELECT * FROM c WHERE c.id = '{blog_id}'"
     items = list(container.query_items(query=query, enable_cross_partition_query=True))
-
     if not items:
         raise HTTPException(status_code=404, detail=BLOG_POST_NOT_FOUND)
-
-    blog_post = items[0]
-
-    if title:
-        blog_post["title"] = title
-    if content:
-        blog_post["content"] = content
-    if author:
-        blog_post["author"] = author
-    if category:
-        blog_post["category"] = category
-
-    if image:
-        image_path = f"images/{blog_id}_{image.filename}"
-        with open(image_path, "wb") as f:
-            f.write(await image.read())
-        blog_post["image_url"] = image_path
-
-    blog_post["date"] = datetime.now(timezone.utc).isoformat()
-
-    container.upsert_item(body=blog_post)
+    blog_post = blog_post.model_copy(update={
+        "id": blog_id,
+        "date": datetime.now(timezone.utc).isoformat()
+    })
+    container.upsert_item(body=blog_post.model_dump())
     return {"message": "Blog post updated successfully", "id": blog_id}
 
 @app.delete("/blog/{blog_id}")
 async def delete_blog_post(blog_id: str, credentials: HTTPAuthorizationCredentials = Depends(verify_token)):
     try:
         container.delete_item(item=blog_id, partition_key=blog_id)
+        logging.info(f"Blog post deleted: {blog_id}")
         return {"message": "Blog post deleted successfully"}
     except Exception:
         raise HTTPException(status_code=404, detail=BLOG_POST_NOT_FOUND)
